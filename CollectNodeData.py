@@ -74,10 +74,10 @@ class EventHandler(pyscipopt.Eventhdlr):
                 nOfUpLocks.append(var.getNLocksUp())
                 nOfDownLocks.append(var.getNLocksDown())
                 distanceToLPSol.append(var.getLPSol( ) -self.model.getDualboundRoot())
-                if nodeID >1:
+                if False:
                     cost = var.getObj()
-                    cols = var.getCol()
-                    temp = np.array(cols.getVals())
+                    col = var.getCol()
+                    temp = np.array(col.getVals())
                     LPSol = var.getLPSol()
                     frac = LPSol - np.floor(LPSol)
                     if (cost > 0):
@@ -96,7 +96,7 @@ class EventHandler(pyscipopt.Eventhdlr):
                 nodeFeatures.append(np.sum(fractionalities) / nOfFrac)
 
             # Num. of Fractional Variable / Num. of Integer Variables
-            if nOfFrac == 0:
+            if (len(vars) - nOfFrac) == 0:
                 nodeFeatures.append(1)
             else:
                 nodeFeatures.append(nOfFrac / (len(vars) - nOfFrac))
@@ -175,11 +175,11 @@ class EventHandler(pyscipopt.Eventhdlr):
                 nodeFeatures.append(0)
                 nodeFeatures.append(0)
             else:
-                nodeFeatures.append(np.mean(vec_length))
-                nodeFeatures.append(np.min(vec_length))
-                nodeFeatures.append(np.max(vec_length))
-                nodeFeatures.append(np.std(vec_length))
-                nodeFeatures.append(np.median(vec_length))
+                nodeFeatures.append(np.mean(vectorLen))
+                nodeFeatures.append(np.min(vectorLen))
+                nodeFeatures.append(np.max(vectorLen))
+                nodeFeatures.append(np.std(vectorLen))
+                nodeFeatures.append(np.median(vectorLen))
 
             # Pseudocost score
             if nOfFrac == 0:
@@ -197,6 +197,7 @@ class EventHandler(pyscipopt.Eventhdlr):
 
             self.stats[nodeID] = {}
             self.stats[nodeID]['features'] = nodeFeatures
+            print(self.stats[nodeID]['features'])
 
 
 
@@ -216,41 +217,38 @@ stats = handler.stats
 m.writeStatistics("log.out")
 m.freeProb()
 
-
 with open('log.out', 'r+') as log:
     write = False
+    file = open('testcsv.csv', 'w')
     for line in log:
-        if line == "Diving (single)    :      Calls      Nodes   LP Iters Backtracks  Conflicts   MinDepth   MaxDepth   AvgDepth  RoundSols  NLeafSols  MinSolDpt  MaxSolDpt  AvgSolDpt":
+        if line.split(':')[0] == "Diving Heuristic  ":
             write = True
+            file.write(line)
             continue
-        if line == "Neighborhoods      :      Calls  SetupTime  SolveTime SolveNodes       Sols       Best       Exp3  EpsGreedy        UCB TgtFixRate  Opt  Inf Node Stal  Sol  Usr Othr Actv":
+        if line.split(':')[0] == "Neighborhoods      ":
             break
         if write:
-            file = open('NodeStats.csv', 'w')
-            file.write(line)
+            newLine = line.replace('|', ',')
+            file.write(newLine)
+    log.close()
+    file.close()
 
-with open('NodeStats.csv', 'r+') as f:
-    # read file
-    file_source = f.read()
-    replace_string = file_source.replace('|', ',')
-    # save output
-    f.write(replace_string)
-
-    f.close()
-
-
-with open('Nodestats.csv', 'r+') as f:
+with open('testcsv.csv', 'r+') as f:
     line = f.readline()
 
     line = f.readline()
-    while line:
-        heu = line.split(',')[0]
+    while len(line) > 1:
+        heu = line.split(',')[0].strip()
         node = int(line.split(',')[1])
-        stats[node]['heuStats'] = {}
+        if( node not in stats.keys()):
+
+            stats[node] = {}
+            stats[node]['heuStats'] = {}
         stats[node]['heuStats'][heu] = []
         for i in range(8):
-            stats[node]['heuStats'][heu].append(line.split(',')[i+2])
+            stats[node]['heuStats'][heu].append(float(line.split(',')[i+2]))
 
         line = f.readline()
     f.close()
+
 
