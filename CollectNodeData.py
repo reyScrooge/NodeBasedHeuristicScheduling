@@ -11,15 +11,15 @@ class EventHandler(pyscipopt.Eventhdlr):
         self.stats = {}
 
     def eventinit(self):
-        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
+        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
         self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFEASIBLE, self)
-        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
+        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
         self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
 
     def eventexit(self):
-        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
+        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
         self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEFEASIBLE, self)
-        self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
+        #self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
         self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
 
     def eventexec(self, event):
@@ -74,19 +74,19 @@ class EventHandler(pyscipopt.Eventhdlr):
                 nOfUpLocks.append(var.getNLocksUp())
                 nOfDownLocks.append(var.getNLocksDown())
                 distanceToLPSol.append(var.getLPSol( ) -self.model.getDualboundRoot())
-                if False:
-                    cost = var.getObj()
-                    col = var.getCol()
-                    temp = np.array(col.getVals())
-                    LPSol = var.getLPSol()
-                    frac = LPSol - np.floor(LPSol)
-                    if (cost > 0):
-                        vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
-                    else:
-                        vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
-                    vectorLen. append(vec_length)
+
+                #vector length
+                cost = var.getObj()
+                col = var.getCol()
+                temp = np.array(col.getVals())
+                LPSol = var.getLPSol()
+                frac = LPSol - np.floor(LPSol)
+                if (cost > 0):
+                    vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
                 else:
-                    vectorLen.append(0)
+                    vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
+                vectorLen. append(vec_length)
+
                 pseudocost.append(self.model.getVarPseudocost(var))
 
             # Sum of variables’ LP solution fractionalities / Num. of Fractional Variables
