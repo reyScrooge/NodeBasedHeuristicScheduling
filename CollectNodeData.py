@@ -1,6 +1,10 @@
 from pyscipopt import scip
 import pyscipopt as pyscipopt
 import numpy as np
+from sklearn.linear_model import LogisticRegression
+import joblib
+from sklearn.utils._testing import ignore_warnings
+from sklearn.exceptions import ConvergenceWarning
 
 
 class EventHandler(pyscipopt.Eventhdlr):
@@ -11,22 +15,28 @@ class EventHandler(pyscipopt.Eventhdlr):
         self.stats = {}
 
     def eventinit(self):
-        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
+        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
         self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFEASIBLE, self)
         #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
-        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
+        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
 
     def eventexit(self):
-        #self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
+        self.model.catchEvent(pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED, self)
         self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEFEASIBLE, self)
         #self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE, self)
-        self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
+        #self.model.dropEvent(pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED, self)
 
     def eventexec(self, event):
 
         event_type = event.getType()
 
         if(event_type == pyscipopt.SCIP_EVENTTYPE.NODEFOCUSED):
+
+            print("NODEFOCUSED,NODEFOCUSED,NODEFOCUSED,NODEFOCUSED,NODEFOCUSED,NODEFOCUSED")
+            depth = self.model.getDepth()
+            primal = self.model.getPrimalbound()
+            print('depth ', depth)
+            print("primal ", primal)
 
             nodeID = self.model.getCurrentNode().getNumber()
             nodeFeatures = []
@@ -77,16 +87,16 @@ class EventHandler(pyscipopt.Eventhdlr):
 
                 #vector length
                 cost = var.getObj()
-                col = var.getCol()
-                temp = np.array(col.getVals())
-                LPSol = var.getLPSol()
-                frac = LPSol - np.floor(LPSol)
-                if (cost > 0):
-                    vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
-                else:
-                    vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
-                vectorLen. append(vec_length)
-
+                # col = var.getCol()
+                # temp = np.array(col.getVals())
+                # LPSol = var.getLPSol()
+                # frac = LPSol - np.floor(LPSol)
+                # if (cost > 0):
+                #     vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
+                # else:
+                #     vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
+                # vectorLen. append(vec_length)
+                vectorLen.append(0)
                 pseudocost.append(self.model.getVarPseudocost(var))
 
             # Sum of variables’ LP solution fractionalities / Num. of Fractional Variables
@@ -195,9 +205,10 @@ class EventHandler(pyscipopt.Eventhdlr):
                 nodeFeatures.append(np.std(pseudocost))
                 nodeFeatures.append(np.median(pseudocost))
 
+
             self.stats[nodeID] = {}
             self.stats[nodeID]['features'] = nodeFeatures
-            print(self.stats[nodeID]['features'])
+
 
 
 
@@ -240,9 +251,9 @@ with open('testcsv.csv', 'r+') as f:
     while len(line) > 1:
         heu = line.split(',')[0].strip()
         node = int(line.split(',')[1])
-        if( node not in stats.keys()):
-
-            stats[node] = {}
+        # if( node not in stats.keys()):
+        #     stats[node] = {}
+        if('heuStats' not in stats[node].keys()):
             stats[node]['heuStats'] = {}
         stats[node]['heuStats'][heu] = []
         for i in range(8):
@@ -250,5 +261,58 @@ with open('testcsv.csv', 'r+') as f:
 
         line = f.readline()
     f.close()
+
+
+
+
+nodeIDInMatrix = []
+nodeIDs = stats.keys()
+
+
+# Node info in not saved by the order of node ID, so use a list to record the nodeIDs
+nodeIDInMatrix = [i for i in nodeIDs]
+
+successMatrix = np.zeros((len(nodeIDs), 17), dtype = int)
+heuristics = ['actconsdiving', 'coefdiving', 'conflictdiving', 'crossover', 'distributiondiving', 'farkasdiving', 'fracdiving',
+              'guideddiving', 'linesearchdiving', 'localbranching', 'pscostdiving', 'rens', 'rins', 'mutation', 'dins', 'trustregion',
+              'veclendiving']
+
+
+
+for i in range(len(nodeIDInMatrix)):
+
+    nodeId = nodeIDInMatrix[i]
+    print(stats[nodeId].keys())
+    heusOfNode = stats[nodeId]['heuStats'].keys()
+    for heu in range(len(heuristics)):
+        if heuristics[heu] in heusOfNode:
+            successMatrix[i][heu] = 1
+
+print(stats[1]['heuStats'].keys())
+
+Xtrain = []
+for i in nodeIDs:
+    Xtrain.append(stats[i]['features'])
+Xtrain = np.array(Xtrain)
+
+@ignore_warnings(category=ConvergenceWarning)
+def training():
+    for heuIndex in range(len(heuristics)):
+        heuristic = heuristics[heuIndex]
+        Ytrain = successMatrix[:, heuIndex].T.ravel()
+
+        # Ytrain = np.array(Ytrain).reshape(len(Xtrain) ,1).ravel()
+
+        lr = LogisticRegression()
+        lr.fit(Xtrain, Ytrain)
+
+        # to save the trained model
+        fileName = heuristic + ".sav"
+        joblib.dump(lr, fileName)
+
+    #to load the model
+    #loadedModel = joblib.load(fileName)
+
+training()
 
 
