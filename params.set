@@ -266,5 +266,4 @@ heuristics/veclendiving/freqofs = 0
 # [type: int, advanced: FALSE, range: [-1,65534], default: 1]
 heuristics/zirounding/freq = -1
 
-presolving/maxrestarts: 0
-
+presolving/maxrestarts = 0
