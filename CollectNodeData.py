@@ -55,21 +55,9 @@ class EventHandler(pyscipopt.Eventhdlr):
         # Node Depth
         nodeFeatures.append(self.model.getDepth())
 
-        vars = self.model.getVars()
-        fracVars = []
-        nOfFrac = 0
-        fractionalities = []
-        for var in vars:
-            LPSol = var.getLPSol()
-            if abs(LPSol- int(LPSol)) < 0.00001:
-                fracVars.append(var)
-                nOfFrac += 1
-                fractionalities.append(LPSol - np.floor(LPSol))
+        # Get fractional variables
+        fracVars, _, fractionalities, nOfFrac, _, _ = self.model.getLPBranchCands()
 
-        # Error occurs:LPCan = self.model.getLPBranchCands()
-        # fracVars = LPCan[0]
-        # fractionalities = LPCan[2]
-        # nOfFrac = LPCan[3]
         nOfUpLocks = []
         nOfDownLocks = []
         distanceToLPSol = []
@@ -83,16 +71,16 @@ class EventHandler(pyscipopt.Eventhdlr):
 
             #vector length
             cost = var.getObj()
-            # col = var.getCol()
-            # temp = np.array(col.getVals())
-            # LPSol = var.getLPSol()
-            # frac = LPSol - np.floor(LPSol)
-            # if (cost > 0):
-            #     vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
-            # else:
-            #     vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
-            # vectorLen. append(vec_length)
-            vectorLen.append(0)
+            col = var.getCol()
+            temp = np.array(col.getVals())
+            LPSol = var.getLPSol()
+            frac = LPSol - np.floor(LPSol)
+            if (cost > 0):
+                vec_length = ( 1 -frac) * cost / (np.linalg.norm(temp ) +1)
+            else:
+                vec_length = - frac * cost / (np.linalg.norm(temp) + 1)
+            vectorLen.append(vec_length)
+            # vectorLen.append(0)
             pseudocost.append(self.model.getVarPseudocost(var))
 
         # Sum of variables’ LP solution fractionalities / Num. of Fractional Variables
@@ -102,10 +90,11 @@ class EventHandler(pyscipopt.Eventhdlr):
             nodeFeatures.append(np.sum(fractionalities) / nOfFrac)
 
         # Num. of Fractional Variable / Num. of Integer Variables
-        if (len(vars) - nOfFrac) == 0:
+        nInt = self.model.getNIntVars()
+        if (nInt - nOfFrac) == 0:
             nodeFeatures.append(1)
         else:
-            nodeFeatures.append(nOfFrac / (len(vars) - nOfFrac))
+            nodeFeatures.append(nOfFrac / (nInt - nOfFrac))
 
         # Num. of Active Constraints / Num. of Constraints
         conss = self.model.getConss()
@@ -214,6 +203,7 @@ instance = "ins.lp"
 m = pyscipopt.Model()
 m.readParams("params.set")
 m.setParam('display/verblevel', 0)
+m.setParam('limits/time', 1200) # 20min time limit
 m.readProblem(instance)
 
 
