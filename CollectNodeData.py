@@ -1,3 +1,5 @@
+import pickle
+
 import pyscipopt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -197,12 +199,12 @@ class EventHandler(pyscipopt.Eventhdlr):
 
 
 
-instance = "ins.lp"
+instance = "ins3.lp"
 
 
 m = pyscipopt.Model()
 m.readParams("params.set")
-m.setParam('display/verblevel', 0)
+#m.setParam('display/verblevel', 0)
 m.setParam('limits/time', 1200) # 20min time limit
 m.readProblem(instance)
 
@@ -249,55 +251,67 @@ with open('testcsv.csv', 'r+') as f:
         line = f.readline()
     f.close()
 
+with open('stats.pickle', 'rb') as handle:
+    savedStats = pickle.load(handle)
+
+
+index = len(savedStats.keys())
+for key in stats.keys():
+    print(stats[key])
+    savedStats[index] = stats[key]
+    index += 1
+
+with open('stats.pickle', 'wb') as handle:
+    pickle.dump(savedStats, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 
-nodeIDInMatrix = []
-nodeIDs = stats.keys()
-
-
-# Node info in not saved by the order of node ID, so use a list to record the nodeIDs
-nodeIDInMatrix = [i for i in nodeIDs]
-
-successMatrix = np.zeros((len(nodeIDs), 17), dtype = int)
-heuristics = ['actconsdiving', 'coefdiving', 'conflictdiving', 'crossover', 'distributiondiving', 'farkasdiving', 'fracdiving',
-              'guideddiving', 'linesearchdiving', 'localbranching', 'pscostdiving', 'rens', 'rins', 'mutation', 'dins', 'trustregion',
-              'veclendiving']
-
-
-
-for i in range(len(nodeIDInMatrix)):
-
-    nodeId = nodeIDInMatrix[i]
-    print(stats[nodeId].keys())
-    heusOfNode = stats[nodeId]['heuStats'].keys()
-    for heu in range(len(heuristics)):
-        if heuristics[heu] in heusOfNode:
-            successMatrix[i][heu] = 1
-
-print(stats[1]['heuStats'].keys())
-
-Xtrain = []
-for i in nodeIDs:
-    Xtrain.append(stats[i]['features'])
-Xtrain = np.array(Xtrain)
-
-@ignore_warnings(category=ConvergenceWarning)
-def training():
-    for heuIndex in range(len(heuristics)):
-        heuristic = heuristics[heuIndex]
-        Ytrain = successMatrix[:, heuIndex].T.ravel()
-
-        # Ytrain = np.array(Ytrain).reshape(len(Xtrain) ,1).ravel()
-
-        lr = LogisticRegression()
-        lr.fit(Xtrain, Ytrain)
-
-        # to save the trained model
-        fileName = heuristic + ".sav"
-        joblib.dump(lr, fileName)
-
-    #to load the model
-    #loadedModel = joblib.load(fileName)
-
-training()
+# nodeIDInMatrix = []
+# nodeIDs = stats.keys()
+#
+#
+# # Node info in not saved by the order of node ID, so use a list to record the nodeIDs
+# nodeIDInMatrix = [i for i in nodeIDs]
+#
+# successMatrix = np.zeros((len(nodeIDs), 17), dtype = int)
+# heuristics = ['actconsdiving', 'coefdiving', 'conflictdiving', 'crossover', 'distributiondiving', 'farkasdiving', 'fracdiving',
+#               'guideddiving', 'linesearchdiving', 'localbranching', 'pscostdiving', 'rens', 'rins', 'mutation', 'dins', 'trustregion',
+#               'veclendiving']
+#
+#
+#
+# for i in range(len(nodeIDInMatrix)):
+#
+#     nodeId = nodeIDInMatrix[i]
+#     print(stats[nodeId].keys())
+#     heusOfNode = stats[nodeId]['heuStats'].keys()
+#     for heu in range(len(heuristics)):
+#         if heuristics[heu] in heusOfNode:
+#             successMatrix[i][heu] = 1
+#
+# print(stats[1]['heuStats'].keys())
+#
+# Xtrain = []
+# for i in nodeIDs:
+#     Xtrain.append(stats[i]['features'])
+# Xtrain = np.array(Xtrain)
+#
+# @ignore_warnings(category=ConvergenceWarning)
+# def training():
+#     for heuIndex in range(len(heuristics)):
+#         heuristic = heuristics[heuIndex]
+#         Ytrain = successMatrix[:, heuIndex].T.ravel()
+#
+#         # Ytrain = np.array(Ytrain).reshape(len(Xtrain) ,1).ravel()
+#
+#         lr = LogisticRegression()
+#         lr.fit(Xtrain, Ytrain)
+#
+#         # to save the trained model
+#         fileName = heuristic + ".sav"
+#         joblib.dump(lr, fileName)
+#
+#     #to load the model
+#     #loadedModel = joblib.load(fileName)
+#
+# training()
