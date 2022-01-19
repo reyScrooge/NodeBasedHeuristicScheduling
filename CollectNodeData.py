@@ -27,7 +27,9 @@ class EventHandler(pyscipopt.Eventhdlr):
         if (event_type == pyscipopt.SCIP_EVENTTYPE.NODEFEASIBLE):
         	print('Node feasible')
         if (event_type == pyscipopt.SCIP_EVENTTYPE.NODEINFEASIBLE):
-        	print('Node infeasible')
+            print('Node infeasible')
+
+            return
         if (event_type == pyscipopt.SCIP_EVENTTYPE.NODEBRANCHED):
         	print('Node branched')
 
@@ -205,7 +207,7 @@ instance = "ins3.lp"
 m = pyscipopt.Model()
 m.readParams("params.set")
 #m.setParam('display/verblevel', 0)
-m.setParam('limits/time', 1200) # 20min time limit
+m.setParam('limits/time', 2400) # 40min time limit
 m.readProblem(instance)
 
 
